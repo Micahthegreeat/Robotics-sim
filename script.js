@@ -1,22 +1,18 @@
-// 1. Load User Config from Landing Page
+// ==========================================
+// ⚙️ CONFIGURATION & OVERRIDES
+// ==========================================
 const userOverrides = JSON.parse(localStorage.getItem('ftc_user_config') || "{}");
 
 const CONFIG = {
-    // Assets
-    fieldImageSrc: "image.png",
-    // Use uploaded image if exists, otherwise use default
+    fieldImageSrc: userOverrides.selectedField || "image.png",
     robotImageSrc: userOverrides.customRobotImg || "image copy.png", 
-    
-    // Settings (Use Overrides from landing page OR defaults)
     defaultLanguage: userOverrides.defaultLanguage || "java",
     fieldSizeInches: 144,
     robotWidthInches: userOverrides.robotWidthInches || 18,
     robotLengthInches: userOverrides.robotLengthInches || 18,
-    
-    startX: userOverrides.startX !== undefined ? userOverrides.startX : 0, 
-    startY: userOverrides.startY !== undefined ? userOverrides.startY : 0, 
+    startX: 0, 
+    startY: 0, 
     startAngleDeg: -90,
-    
     canvasFieldSizePx: 600,
     driveSpeedInchesPerFrame: 0.5,
     turnSpeedDegPerFrame: 2.0,
@@ -24,25 +20,19 @@ const CONFIG = {
     qrMax: 4
 };
 
-// ... (Rest of your existing script.js code below)
-
 // ==========================================
 // 🛠️ SYSTEM SETUP
 // ==========================================
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const codeArea = document.getElementById("code");
-const langDisplay = document.getElementById("lang");
 const CACHE_KEY = "ftc_sim_code_cache";
 
-// Initial state set from CONFIG
-let currentLanguage = CONFIG.defaultLanguage;
-
-function setLanguage(lang) {
-    currentLanguage = lang;
-    if (langDisplay) langDisplay.innerText = lang;
-    console.log("Mode switched to:", lang);
-}
+// Initialize Images
+const robotImg = new Image(); 
+robotImg.src = CONFIG.robotImageSrc;
+const fieldImg = new Image(); 
+fieldImg.src = CONFIG.fieldImageSrc;
 
 // 💾 CACHING
 function saveCode() { localStorage.setItem(CACHE_KEY, codeArea.value); }
@@ -53,44 +43,34 @@ function loadCode() {
 codeArea.addEventListener("input", saveCode);
 loadCode();
 
-// Load images
-const robotImg = new Image(); robotImg.src = CONFIG.robotImageSrc;
-const fieldImg = new Image(); fieldImg.src = CONFIG.fieldImageSrc;
-
 // =====================
 // 🤖 ROBOT STATE
 // =====================
 const INCH_TO_PX = CONFIG.canvasFieldSizePx / CONFIG.fieldSizeInches;
-
-let robot = { 
-    x: CONFIG.startX, 
-    y: CONFIG.startY, 
-    angle: CONFIG.startAngleDeg * (Math.PI / 180) 
-};
-
+let robot = { x: CONFIG.startX, y: CONFIG.startY, angle: CONFIG.startAngleDeg * (Math.PI / 180) };
 let paused = false;
 let commandQueue = [];
 let currentCommand = null;
 
 // =====================
-// 🔍 MULTI-LANGUAGE PARSER
+// 🔍 PARSER (Logic is hidden from UI)
 // =====================
+let currentLanguage = CONFIG.defaultLanguage; // Defaulted via Config
 
 function getQRCodeID() {
     const id = Math.floor(Math.random() * (CONFIG.qrMax - CONFIG.qrMin + 1)) + CONFIG.qrMin;
-    console.log(`[${currentLanguage.toUpperCase()}] QR ID Scanned:`, id);
+    console.log("QR ID Scanned:", id);
     return id;
 }
 
 function runCode() {
-    // Reset Robot to CONFIG defaults
+    // Reset Robot State
     robot.x = CONFIG.startX;
     robot.y = CONFIG.startY;
     robot.angle = CONFIG.startAngleDeg * (Math.PI / 180);
     
     const lines = codeArea.value.split("\n");
-    
-    // Route to appropriate parser based on current mode
+    // Parser detects mode from hidden internal variable
     if (currentLanguage === "java") {
         commandQueue = parseJava(lines);
     } else {
@@ -99,13 +79,16 @@ function runCode() {
     currentCommand = null;
 }
 
-// --- JAVA PARSER (Supports for-loops with {}) ---
+function togglePause() {
+    paused = !paused;
+    document.getElementById("pauseBtn").innerText = paused ? "Resume" : "Pause";
+}
+
+// --- JAVA PARSER ---
 function parseJava(lines) {
     let commands = [];
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i].trim();
-        if (!line) continue;
-
         const loopMatch = line.match(/for\s*\(.*<\s*(\d+);.*\)/);
         if (loopMatch) {
             const count = parseInt(loopMatch[1]);
@@ -125,19 +108,16 @@ function parseJava(lines) {
     return commands;
 }
 
-// --- PYTHON PARSER (Supports range() and Indentation) ---
+// --- PYTHON PARSER ---
 function parsePython(lines) {
     let commands = [];
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i].trim();
-        if (!line) continue;
-        
         const loopMatch = lines[i].match(/for\s+\w+\s+in\s+range\((\d+)\)\s*:/);
         if (loopMatch) {
             const count = parseInt(loopMatch[1]);
             let body = [];
             i++;
-            // Collect indented lines
             while (i < lines.length && (lines[i].startsWith("  ") || lines[i].startsWith("\t") || lines[i].trim() === "")) {
                 if (lines[i].trim() !== "") body.push(lines[i].trim());
                 i++;
@@ -170,14 +150,12 @@ function parseAction(line) {
 // =====================
 // 🏎️ ENGINE & RENDER
 // =====================
-
 function update() {
     if (paused || (!currentCommand && commandQueue.length === 0)) return;
     if (!currentCommand) {
         currentCommand = commandQueue.shift();
         currentCommand.progress = 0; 
     }
-
     const cmd = currentCommand;
     if (cmd.type === "forward") {
         let dist = cmd.args[0] || 0;
@@ -207,12 +185,6 @@ function draw() {
         ctx.drawImage(fieldImg, -fSize/2, -fSize/2, fSize, fSize);
     } else {
         ctx.fillStyle = "#111"; ctx.fillRect(-fSize/2, -fSize/2, fSize, fSize);
-        ctx.strokeStyle = "#222";
-        const tSize = 24 * INCH_TO_PX;
-        for(let i = -3; i <= 3; i++) {
-            ctx.beginPath(); ctx.moveTo(i * tSize, -300); ctx.lineTo(i * tSize, 300); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(-300, i * tSize); ctx.lineTo(300, i * tSize); ctx.stroke();
-        }
     }
 
     ctx.save();
@@ -230,7 +202,4 @@ function draw() {
 }
 
 function loop() { update(); draw(); requestAnimationFrame(loop); }
-
-// Initialize display and start loop
-setLanguage(CONFIG.defaultLanguage);
 loop();
