@@ -1,34 +1,48 @@
 // ==========================================
-// ⚙️ CONFIGURATION (Adjust these as needed)
+// ⚙️ CONFIGURATION
 // ==========================================
-
-// 1. PHYSICAL DIMENSIONS (Inches)
 const CONFIG = {
-    fieldSizeInches: 144,      // Standard FTC 12ft Field
-    robotWidthInches: 18,      // Standard 18" Robot
-    robotLengthInches: 18,     // Standard 18" Robot
-    
-    // 2. STARTING POSITION (In Inches, 0,0 is Center)
-    // Examples: (0,0) is Center, (-60, 60) is a Corner
+    fieldSizeInches: 144,
+    robotWidthInches: 18,
+    robotLengthInches: 18,
     startX: 0, 
     startY: 0, 
-    startAngleDeg: -90,        // -90 is "Up", 0 is "Right", 90 is "Down", 180 is "Left"
-
-    // 3. VISUALS (Pixels)
-    canvasFieldSizePx: 600,    // How big the field square looks on screen
-    
-    // 4. PERFORMANCE (Speed)
-    driveSpeedInchesPerFrame: 0.5, // How fast forward(x) moves
-    turnSpeedDegPerFrame: 2.0      // How fast turn(x) rotates
+    startAngleDeg: -90,
+    canvasFieldSizePx: 600,
+    driveSpeedInchesPerFrame: 0.5,
+    turnSpeedDegPerFrame: 2.0
 };
 
 // ==========================================
-// 🛠️ INTERNAL STATE & SCALING
+// 🛠️ INTERNAL STATE & PERSISTENCE
 // ==========================================
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+const codeArea = document.getElementById("code");
 
-// Conversion: How many pixels represent 1 inch?
+// 💾 CACHING LOGIC
+const CACHE_KEY = "ftc_sim_code_cache";
+
+function saveCode() {
+    localStorage.setItem(CACHE_KEY, codeArea.value);
+}
+
+function loadCode() {
+    const savedCode = localStorage.getItem(CACHE_KEY);
+    if (savedCode) {
+        codeArea.value = savedCode;
+    }
+}
+
+// Attach the listener so it saves automatically while you type
+codeArea.addEventListener("input", saveCode);
+
+// Load the code immediately on script start
+loadCode();
+
+// ==========================================
+// ⚙️ COORDINATE & ROBOT SETUP
+// ==========================================
 const INCH_TO_PX = CONFIG.canvasFieldSizePx / CONFIG.fieldSizeInches;
 
 let robot = {
@@ -41,7 +55,6 @@ let paused = false;
 let commandQueue = [];
 let currentCommand = null;
 
-// Images
 const robotImg = new Image();
 robotImg.src = "image copy.png";
 const fieldImg = new Image();
@@ -57,12 +70,12 @@ function togglePause() {
 }
 
 function runCode() {
-    // Reset robot to the CONFIG values on every run
+    // Reset robot to the CONFIG values
     robot.x = CONFIG.startX;
     robot.y = CONFIG.startY;
     robot.angle = CONFIG.startAngleDeg * (Math.PI / 180);
     
-    commandQueue = parseCode(document.getElementById("code").value);
+    commandQueue = parseCode(codeArea.value);
     currentCommand = null;
 }
 
@@ -126,7 +139,6 @@ function update() {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Shift origin to center
     ctx.save();
     ctx.translate(canvas.width / 2, canvas.height / 2);
 
@@ -137,7 +149,6 @@ function draw() {
     } else {
         ctx.fillStyle = "#333";
         ctx.fillRect(-fSize/2, -fSize/2, fSize, fSize);
-        // Draw 24" Grid Lines
         ctx.strokeStyle = "#555";
         const tileSizePx = 24 * INCH_TO_PX;
         for(let i = -3; i <= 3; i++) {
@@ -163,7 +174,6 @@ function draw() {
     } else {
         ctx.fillStyle = "red";
         ctx.fillRect(-rWidth/2, -rLength/2, rWidth, rLength);
-        // "Front" of robot indicator
         ctx.fillStyle = "white";
         ctx.fillRect(rWidth/3, -2, rWidth/6, 4);
     }
