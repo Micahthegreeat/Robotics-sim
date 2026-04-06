@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FTC Robot Simulator</title>
+
+  <!-- ✅ CSS MERGED HERE -->
+  <style>
+    body {
+      text-align: center;
+      font-family: Arial, sans-serif;
+      background-color: #1e1e1e;
+      color: white;
+    }
+
+    canvas {
+      border: 2px solid white;
+      background-color: black;
+      margin-top: 20px;
+    }
+
+    .controls {
+      margin-top: 20px;
+    }
+
+    textarea {
+      background-color: #111;
+      color: #0f0;
+      font-family: monospace;
+      padding: 10px;
+      width: 400px;
+      height: 150px;
+    }
+
+    button {
+      margin: 5px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>FTC Robot Simulator</h1>
+
+<canvas id="game" width="800" height="600"></canvas>
+
+<div class="controls">
+  <div>
+    <button onclick="setLanguage('java')">Java Mode</button>
+    <button onclick="setLanguage('python')">Python Mode</button>
+    <p>Current: <span id="lang">java</span></p>
+  </div>
+
+  <textarea id="code">
+forward(100);
+turn(90);
+forward(100);
+  </textarea>
+
+  <br>
+  <button onclick="runCode()">Run</button>
+  <button onclick="togglePause()" id="pauseBtn">Pause</button>
+</div>
+
+<!-- ✅ JS stays separate -->
+<script src="script.js"></script>
+
+</body>
+</html>
