@@ -2,46 +2,52 @@
 // ⚙️ CONFIGURATION
 // ==========================================
 const CONFIG = {
-    // 1. ASSET LINKS (Change these to your filenames or URLs)
-    fieldImageSrc: "image.png",       // Background Field
-    robotImageSrc: "image copy.png",  // Robot Sprite
+    // 1. ASSET LINKS
+    fieldImageSrc: "image.png",
+    robotImageSrc: "image copy.png",
     
-    // 2. PHYSICAL DIMENSIONS (Inches)
+    // 2. LANGUAGE SETTINGS
+    defaultLanguage: "java",    // "java" or "python"
+    
+    // 3. PHYSICAL DIMENSIONS (Inches)
     fieldSizeInches: 144,
     robotWidthInches: 18,
     robotLengthInches: 18,
     
-    // 3. STARTING POSITION (In Inches, 0,0 is Center)
+    // 4. STARTING POSITION (In Inches, 0,0 is Center)
     startX: 0, 
     startY: 0, 
-    startAngleDeg: -90, // -90 is Up
+    startAngleDeg: -90,
     
-    // 4. VISUALS (Pixels)
+    // 5. VISUALS (Pixels)
     canvasFieldSizePx: 600,
     
-    // 5. PERFORMANCE (Speed)
+    // 6. PERFORMANCE (Speed)
     driveSpeedInchesPerFrame: 0.5,
     turnSpeedDegPerFrame: 2.0,
     
-    // 6. RANDOMIZATION
+    // 7. RANDOMIZATION
     qrMin: 1,
     qrMax: 4
 };
 
 // ==========================================
-// 🛠️ SYSTEM SETUP & ASSETS
+// 🛠️ SYSTEM SETUP
 // ==========================================
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const codeArea = document.getElementById("code");
+const langDisplay = document.getElementById("lang");
 const CACHE_KEY = "ftc_sim_code_cache";
 
-// Initialize Images from CONFIG
-const robotImg = new Image(); 
-robotImg.src = CONFIG.robotImageSrc;
+// Initial state set from CONFIG
+let currentLanguage = CONFIG.defaultLanguage;
 
-const fieldImg = new Image(); 
-fieldImg.src = CONFIG.fieldImageSrc;
+function setLanguage(lang) {
+    currentLanguage = lang;
+    if (langDisplay) langDisplay.innerText = lang;
+    console.log("Mode switched to:", lang);
+}
 
 // 💾 CACHING
 function saveCode() { localStorage.setItem(CACHE_KEY, codeArea.value); }
@@ -51,6 +57,10 @@ function loadCode() {
 }
 codeArea.addEventListener("input", saveCode);
 loadCode();
+
+// Load images
+const robotImg = new Image(); robotImg.src = CONFIG.robotImageSrc;
+const fieldImg = new Image(); fieldImg.src = CONFIG.fieldImageSrc;
 
 // =====================
 // 🤖 ROBOT STATE
@@ -68,52 +78,81 @@ let commandQueue = [];
 let currentCommand = null;
 
 // =====================
-// 🔍 LOGIC & PARSING
+// 🔍 MULTI-LANGUAGE PARSER
 // =====================
 
 function getQRCodeID() {
     const id = Math.floor(Math.random() * (CONFIG.qrMax - CONFIG.qrMin + 1)) + CONFIG.qrMin;
-    console.log("QR Code Scanned! ID:", id);
+    console.log(`[${currentLanguage.toUpperCase()}] QR ID Scanned:`, id);
     return id;
 }
 
 function runCode() {
-    // Reset Robot to Config
+    // Reset Robot to CONFIG defaults
     robot.x = CONFIG.startX;
     robot.y = CONFIG.startY;
     robot.angle = CONFIG.startAngleDeg * (Math.PI / 180);
     
-    const lines = codeArea.value.split("\n").map(l => l.trim()).filter(l => l !== "");
-    commandQueue = parseLogic(lines);
+    const lines = codeArea.value.split("\n");
+    
+    // Route to appropriate parser based on current mode
+    if (currentLanguage === "java") {
+        commandQueue = parseJava(lines);
+    } else {
+        commandQueue = parsePython(lines);
+    }
     currentCommand = null;
 }
 
-function parseLogic(lines) {
+// --- JAVA PARSER (Supports for-loops with {}) ---
+function parseJava(lines) {
     let commands = [];
     for (let i = 0; i < lines.length; i++) {
-        let line = lines[i];
+        let line = lines[i].trim();
+        if (!line) continue;
 
-        // Match Java for-loop: for(int i=0; i<4; i++) or repeat(4)
-        const isJavaFor = line.match(/for\s*\(.*<\s*(\d+);.*\)/);
-        const isRepeat = line.match(/repeat\((\d+)\)/);
-
-        if (isJavaFor || isRepeat) {
-            const count = isJavaFor ? parseInt(isJavaFor[1]) : parseInt(isRepeat[1]);
-            let loopBody = [];
+        const loopMatch = line.match(/for\s*\(.*<\s*(\d+);.*\)/);
+        if (loopMatch) {
+            const count = parseInt(loopMatch[1]);
+            let body = [];
             i++; 
             while (i < lines.length && !lines[i].includes("}")) {
-                loopBody.push(lines[i]);
+                body.push(lines[i].trim());
                 i++;
             }
             for (let j = 0; j < count; j++) {
-                loopBody.forEach(loopLine => {
-                    const parsed = parseAction(loopLine);
-                    if (parsed) commands.push(parsed);
-                });
+                body.forEach(l => { let a = parseAction(l); if(a) commands.push(a); });
             }
         } else {
-            const parsed = parseAction(line);
-            if (parsed) commands.push(parsed);
+            let a = parseAction(line); if(a) commands.push(a);
+        }
+    }
+    return commands;
+}
+
+// --- PYTHON PARSER (Supports range() and Indentation) ---
+function parsePython(lines) {
+    let commands = [];
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].trim();
+        if (!line) continue;
+        
+        const loopMatch = lines[i].match(/for\s+\w+\s+in\s+range\((\d+)\)\s*:/);
+        if (loopMatch) {
+            const count = parseInt(loopMatch[1]);
+            let body = [];
+            i++;
+            // Collect indented lines
+            while (i < lines.length && (lines[i].startsWith("  ") || lines[i].startsWith("\t") || lines[i].trim() === "")) {
+                if (lines[i].trim() !== "") body.push(lines[i].trim());
+                i++;
+            }
+            i--; 
+            for (let j = 0; j < count; j++) {
+                body.forEach(l => { let a = parseAction(l); if(a) commands.push(a); });
+            }
+        } else {
+            let a = parseAction(line); if(a) commands.push(a);
         }
     }
     return commands;
@@ -121,7 +160,8 @@ function parseLogic(lines) {
 
 function parseAction(line) {
     if (line.includes("qrCode.getID()")) {
-        return { type: "log", msg: "QR ID: " + getQRCodeID() };
+        getQRCodeID();
+        return null; 
     }
     const match = line.match(/^(\w+)\((.*)\)/);
     if (!match) return null;
@@ -133,12 +173,11 @@ function parseAction(line) {
 }
 
 // =====================
-// 🏎️ ENGINE
+// 🏎️ ENGINE & RENDER
 // =====================
 
 function update() {
     if (paused || (!currentCommand && commandQueue.length === 0)) return;
-
     if (!currentCommand) {
         currentCommand = commandQueue.shift();
         currentCommand.progress = 0; 
@@ -161,25 +200,19 @@ function update() {
         cmd.progress += spdRad;
         if (cmd.progress >= targetRad) currentCommand = null;
     }
-    if (cmd.type === "log") currentCommand = null;
 }
-
-// =====================
-// 🎨 RENDERER
-// =====================
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.translate(canvas.width / 2, canvas.height / 2);
 
-    // DRAW FIELD
     const fSize = CONFIG.canvasFieldSizePx;
     if (fieldImg.complete && fieldImg.naturalWidth !== 0) {
         ctx.drawImage(fieldImg, -fSize/2, -fSize/2, fSize, fSize);
     } else {
         ctx.fillStyle = "#111"; ctx.fillRect(-fSize/2, -fSize/2, fSize, fSize);
-        ctx.strokeStyle = "#333";
+        ctx.strokeStyle = "#222";
         const tSize = 24 * INCH_TO_PX;
         for(let i = -3; i <= 3; i++) {
             ctx.beginPath(); ctx.moveTo(i * tSize, -300); ctx.lineTo(i * tSize, 300); ctx.stroke();
@@ -187,22 +220,22 @@ function draw() {
         }
     }
 
-    // DRAW ROBOT
     ctx.save();
     ctx.translate(robot.x * INCH_TO_PX, robot.y * INCH_TO_PX);
     ctx.rotate(robot.angle);
     const rw = CONFIG.robotWidthInches * INCH_TO_PX;
     const rl = CONFIG.robotLengthInches * INCH_TO_PX;
-    
     if (robotImg.complete && robotImg.naturalWidth !== 0) {
         ctx.drawImage(robotImg, -rw/2, -rl/2, rw, rl);
     } else {
         ctx.fillStyle = "red"; ctx.fillRect(-rw/2, -rl/2, rw, rl);
-        ctx.fillStyle = "white"; ctx.fillRect(rw/3, -2, rw/6, 4);
     }
     ctx.restore();
     ctx.restore();
 }
 
 function loop() { update(); draw(); requestAnimationFrame(loop); }
+
+// Initialize display and start loop
+setLanguage(CONFIG.defaultLanguage);
 loop();
