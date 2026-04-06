@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FTC Sim - Setup</title>
+    <style>
+        body { background-color: #1a1a1a; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .setup-card { background: #2a2a2a; padding: 30px; border-radius: 12px; width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h2 { color: #ffae00; text-align: center; margin-top: 0; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.85em; margin-bottom: 5px; color: #bbb; }
+        input, select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #111; color: white; box-sizing: border-box; }
+        .row { display: flex; gap: 10px; }
+        button { width: 100%; padding: 12px; background: #ffae00; border: none; border-radius: 6px; color: #000; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        #preview { width: 80px; height: 80px; border: 2px dashed #444; margin: 10px auto; display: block; object-fit: contain; background: #111; }
+        #rotationCanvas { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="setup-card">
+    <h2>FTC Sim Setup</h2>
+    
+    <div class="form-group">
+        <label>Robot Sprite (Auto-rotated 90° CW)</label>
+        <input type="file" id="robotFile" accept="image/*">
+        <img id="preview" src="" alt="Robot Preview (will look rotated until program started)">
+    </div>
+
+    <canvas id="rotationCanvas"></canvas>
+
+    <div class="row">
+        <div class="form-group"><label>Width (in)</label><input type="number" id="robotWidth" value="18"></div>
+        <div class="form-group"><label>Length (in)</label><input type="number" id="robotLength" value="18"></div>
+    </div>
+
+    <div class="row">
+        <div class="form-group"><label>Start X (in)</label><input type="number" id="startX" value="0"></div>
+        <div class="form-group"><label>Start Y (in)</label><input type="number" id="startY" value="0"></div>
+    </div>
+
+    <div class="form-group">
+        <label>Default Language</label>
+        <select id="defaultLang">
+            <option value="java">Java</option>
+            <option value="python">Python</option>
+        </select>
+    </div>
+
+    <button onclick="launchSim()">Launch Simulation</button>
+</div>
+
+<script>
+    const fileInput = document.getElementById('robotFile');
+    const preview = document.getElementById('preview');
+    const rotationCanvas = document.getElementById('rotationCanvas');
+    const ctx = rotationCanvas.getContext('2d');
+    
+    let base64RotatedImage = "";
+
+    fileInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                // Ensure dimensions are swapped for 90deg rotation
+                rotationCanvas.width = img.height;
+                rotationCanvas.height = img.width;
+
+                ctx.clearRect(0, 0, rotationCanvas.width, rotationCanvas.height);
+                
+                // Move to center, rotate, and draw
+                ctx.translate(rotationCanvas.width / 2, rotationCanvas.height / 2);
+                ctx.rotate(Math.PI / 2); // 90 degrees Clockwise
+                ctx.drawImage(img, -img.width / 2, -img.height / 2);
+
+                // Export
+                base64RotatedImage = rotationCanvas.toDataURL("image/png");
+                preview.src = base64RotatedImage;
+                console.log("Image rotated and ready.");
+            };
+            img.onerror = function() {
+                console.error("Failed to load image into memory.");
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    function launchSim() {
+        const config = {
+            robotWidthInches: parseFloat(document.getElementById('robotWidth').value) || 18,
+            robotLengthInches: parseFloat(document.getElementById('robotLength').value) || 18,
+            startX: parseFloat(document.getElementById('startX').value) || 0,
+            startY: parseFloat(document.getElementById('startY').value) || 0,
+            defaultLanguage: document.getElementById('defaultLang').value,
+            customRobotImg: base64RotatedImage 
+        };
+
+        localStorage.setItem('ftc_user_config', JSON.stringify(config));
+        window.location.href = 'run.html';
+    }
+</script>
+
+</body>
+</html>

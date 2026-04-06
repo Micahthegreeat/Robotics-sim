@@ -1,35 +1,30 @@
-// ==========================================
-// ⚙️ CONFIGURATION
-// ==========================================
+// 1. Load User Config from Landing Page
+const userOverrides = JSON.parse(localStorage.getItem('ftc_user_config') || "{}");
+
 const CONFIG = {
-    // 1. ASSET LINKS
+    // Assets
     fieldImageSrc: "image.png",
-    robotImageSrc: "image copy.png",
+    // Use uploaded image if exists, otherwise use default
+    robotImageSrc: userOverrides.customRobotImg || "image copy.png", 
     
-    // 2. LANGUAGE SETTINGS
-    defaultLanguage: "java",    // "java" or "python"
-    
-    // 3. PHYSICAL DIMENSIONS (Inches)
+    // Settings (Use Overrides from landing page OR defaults)
+    defaultLanguage: userOverrides.defaultLanguage || "java",
     fieldSizeInches: 144,
-    robotWidthInches: 18,
-    robotLengthInches: 18,
+    robotWidthInches: userOverrides.robotWidthInches || 18,
+    robotLengthInches: userOverrides.robotLengthInches || 18,
     
-    // 4. STARTING POSITION (In Inches, 0,0 is Center)
-    startX: 0, 
-    startY: 0, 
+    startX: userOverrides.startX !== undefined ? userOverrides.startX : 0, 
+    startY: userOverrides.startY !== undefined ? userOverrides.startY : 0, 
     startAngleDeg: -90,
     
-    // 5. VISUALS (Pixels)
     canvasFieldSizePx: 600,
-    
-    // 6. PERFORMANCE (Speed)
     driveSpeedInchesPerFrame: 0.5,
     turnSpeedDegPerFrame: 2.0,
-    
-    // 7. RANDOMIZATION
     qrMin: 1,
     qrMax: 4
 };
+
+// ... (Rest of your existing script.js code below)
 
 // ==========================================
 // 🛠️ SYSTEM SETUP
