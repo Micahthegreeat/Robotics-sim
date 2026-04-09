@@ -1,3 +1,3 @@
 <main class = 'textblock' id = 'spec'></main>
 <script src="https://cdn.jsdelivr.net/npm/showdown/dist/showdown.min.js"></script>
-<script> fetch('/README.md').then(r=>r.text()).then(m=>spec.innerHTML=new showdown.Converter().makeHtml(m)); </script>
+<script> fetch('docs/specification.md').then(r=>r.text()).then(m=>spec.innerHTML=new showdown.Converter().makeHtml(m)); </script>
