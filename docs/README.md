@@ -1,6 +1,6 @@
 A robotics simulator to test pathing for various FTC maps.
 
-visit [the specification](./specification.md) to see what functions can be read in the interpreter.
+visit [the specification](./specification.md) to see what functions can be read in the emulator.
 
 visit [the tech](./tech.md) to see the techinal stuff for how this is running.
 
